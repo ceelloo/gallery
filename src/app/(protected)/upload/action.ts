@@ -1,13 +1,35 @@
 "use server"
 
-import db from "@/lib/database"
-import { z } from "zod"
-import sharp from "sharp"
 import { auth } from "@/lib/auth"
-import { headers } from "next/headers"
-import { redirect } from "next/navigation"
-import { processAndStoreImage, storeImage } from "@/lib/image"
+import db from "@/lib/database"
+import { processAndStoreImage } from "@/lib/image"
 import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
+import { notFound, redirect } from "next/navigation"
+import { z } from "zod"
+
+export const getAlbum = async () => {
+  const data = await auth.api.getSession({ headers: await headers() })
+  if (!data) notFound()
+  return await db.album.findMany({ where: { userId: data.user.id } })
+}
+
+export const createAlbum = async (_: any, formData: FormData) => {
+  const data = Object.fromEntries(formData) as { name: string, description: string }
+
+  const session = await auth.api.getSession({ headers: await headers() })
+  if (!session?.user) redirect("/sign-out")
+
+  const album = await db.album.create({
+    data: {
+      ...data,
+      userId: session.user.id
+    }
+  })
+
+  revalidatePath("/upload")
+  return { success: true }
+}
 
 const imageUploadSchema = z.object({
   image: z
@@ -30,6 +52,7 @@ const imageUploadSchema = z.object({
         .map((tag) => tag.trim())
         .filter((tag) => tag !== "")
     ),
+  album: z.string().min(1, { message: "Title is required." }),
 })
 
 export const upload = async (_: any, form: FormData) => {
@@ -38,6 +61,9 @@ export const upload = async (_: any, form: FormData) => {
 
   const session = await auth.api.getSession({ headers: await headers() })
   if (!session?.user) redirect("/sign-out")
+
+  const existingAlbum = await db.album.findUnique({ where: { id: validatedFields.data.album } })
+  if (!existingAlbum) return { success: false }
 
   const processImage = await processAndStoreImage(validatedFields.data.image)
   if (!processImage.success) return { success: processImage.success }
@@ -50,6 +76,7 @@ export const upload = async (_: any, form: FormData) => {
       filePath: processImage.data.fileName,
       tags: validatedFields.data.tag.join(','),
       metadata: processImage.data.metadata,
+      albumId: validatedFields.data.album,
     },
   })
 

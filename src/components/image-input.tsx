@@ -48,7 +48,7 @@ export const ImageUpload = ({ className, error, minWidth = 300, minHeight = 300,
   return (
     <div>
       <div
-        className={`relative h-60 rounded-lg border-2 border-dashed
+        className={`relative h-72 rounded-lg border-2 border-dashed
             ${error ? 'border-red-500' : 'border-gray-300'}
             ${preview ? 'p-0' : 'p-4'}
             bg-gray-50 transition-colors`}

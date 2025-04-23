@@ -45,3 +45,4 @@ next-env.d.ts
 /storage/profile/*
 !/storage/profile/default.png
 /prisma/dev.db
+/prisma/dev.db-journal

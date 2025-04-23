@@ -1,4 +1,4 @@
-import type { Image, User } from "@prisma/client"
+import type { Image, User } from "@/generated"
 
 export const imageTags = [
   // Theme / Content

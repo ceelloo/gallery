@@ -3,10 +3,10 @@
 import { auth } from "@/lib/auth"
 import { ImageMetadata } from "@/lib/constant"
 import db from "@/lib/database"
+import { deleteImage as removeImage } from "@/lib/image"
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
-import { redirect } from "next/navigation"
-import { deleteImage as removeImage } from "@/lib/image"
+import { notFound, redirect } from "next/navigation"
 
 export const getImageBySlug = async (slug: string) => {
   const image = await db.image.findUnique({
@@ -15,10 +15,11 @@ export const getImageBySlug = async (slug: string) => {
       user: true,
       likes: true,
       comments: { include: { user: true } },
+      album: true,
     }
   })
 
-  if (!image) throw new Error("Image not found")
+  if (!image) notFound()
 
   return {
     id: image.id,
@@ -29,6 +30,10 @@ export const getImageBySlug = async (slug: string) => {
     metadata: image.metadata as ImageMetadata,
     createdAt: image.createdAt,
     likes: image.likes.length,
+    album: {
+      id: image.album.id,
+      name: image.album.name,
+    },
     user: {
       id: image.user.id,
       name: image.user.name,
@@ -39,6 +44,7 @@ export const getImageBySlug = async (slug: string) => {
       text: comment.text,
       userName: comment.user.name,
       userImage: comment.user.image,
+      userEmail: comment.user.email,
       createdAt: comment.createdAt,
     }))
   }
@@ -89,12 +95,13 @@ export const postComment = async (imageId: string, formData: FormData) => {
 }
 
 export const updateImage = async (_: any, formData: FormData) => {
-  const data = Object.fromEntries(formData) as { title: string, description: string, tags: string, id: string }
+  const data = Object.fromEntries(formData) as { title: string, description: string, tags: string, id: string, albumId: string }
   const image = await db.image.update({
     where: { id: data.id },
     data: {
       ...data,
-      tags: data.tags
+      tags: data.tags,
+      albumId: data.albumId,
     }
   })
   revalidatePath(`/${image.slug}`)
@@ -108,4 +115,11 @@ export const deleteImage = async (id: string, _: FormData) => {
 
   await removeImage(image.filePath)
   redirect("/")
+}
+
+export const getAlbums = async () => {
+  const user = await auth.api.getSession({ headers: await headers() })
+  if (!user) throw new Error("Unauthorized")
+
+  return await db.album.findMany({ where: { userId: user.user.id } })
 }

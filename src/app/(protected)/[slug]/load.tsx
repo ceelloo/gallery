@@ -4,20 +4,24 @@ import FormInput from "@/components/form-input"
 import { MultiSelect } from "@/components/multi-select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Dialog, DialogClose, DialogContent, DialogFooter, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { User } from "@/lib/auth"
 import { imageTags } from "@/lib/constant"
 import { formatDistanceToNow } from "date-fns"
-import { Download, Heart, Pen, Send, Trash } from "lucide-react"
+import { Download, Folder, Heart, Pen, Send, Trash } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { useActionState, useEffect, useState, useTransition } from "react"
 import { toast } from "sonner"
 import { deleteImage, ExtendedImage, postComment, toggleLike, updateImage } from "./action"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { createAlbum } from "../upload/action"
+import { Album } from "@/generated"
 
-export const LoadImage = ({ image, isLiked, users }: { image: ExtendedImage, isLiked: boolean, users: User }) => {
+export const LoadImage = ({ image, isLiked, users, albums }: { image: ExtendedImage, isLiked: boolean, users: User, albums: Album[] }) => {
   const [pending, startTransition] = useTransition()
   const [liked, setLiked] = useState<boolean>(isLiked)
 
@@ -49,7 +53,12 @@ export const LoadImage = ({ image, isLiked, users }: { image: ExtendedImage, isL
           </div>
           <div className={`flex-1 flex flex-col gap-2`}>
             <div>
-              <h1 className="text-3xl font-bold">{image.title}</h1>
+              <div className="flex justify-between">
+                <h1 className="text-3xl font-bold">{image.title}</h1>
+                <Link href={`/album/${image.album.id}`} className={buttonVariants()}>
+                  <Folder /> {image.album.name}
+                </Link>
+              </div>
               <p className="text-lg">{image.description}</p>
               <p className="text-xs">{formatDistanceToNow(new Date(image.createdAt), { addSuffix: true })}</p>
             </div>
@@ -81,7 +90,7 @@ export const LoadImage = ({ image, isLiked, users }: { image: ExtendedImage, isL
               </Button>
               {users.id === image.user.id && (
                 <>
-                  <UpdateImage data={imageOnly} />
+                  <UpdateImage album={albums} data={imageOnly} />
                   <DeleteImage id={image.id} />
                 </>
               )}
@@ -115,11 +124,11 @@ const Comment = ({ data }: { data: ExtendedImage["comments"][number] }) => {
     <div className="flex items-start space-x-2 my-2">
       <Avatar>
         <AvatarFallback>??</AvatarFallback>
-        <AvatarImage src={data.userImage} />
+        <AvatarImage src={`/api/image/${data.userImage}?type=profile`} />
       </Avatar>
       <div className="text-gray-800 flex flex-col">
         <div className='text-sm flex gap-2'>
-          <Link href={`/profile/${data.userName}`}>
+          <Link href={`/profile/${data.userEmail}`}>
             <h1 className='font-bold hover:underline'>{data.userName}</h1>
           </Link>
           <p>{data.text}</p>
@@ -130,7 +139,7 @@ const Comment = ({ data }: { data: ExtendedImage["comments"][number] }) => {
   )
 }
 
-const UpdateImage = ({ data }: { data: Omit<ExtendedImage, "user" | "comments"> }) => {
+const UpdateImage = ({ data, album }: { data: Omit<ExtendedImage, "user" | "comments">, album: Album[] }) => {
   const [tags, setTags] = useState<string[]>(data.tags?.split(",") ?? [])
   const [state, action] = useActionState(updateImage, undefined)
   const [open, setOpen] = useState(false)
@@ -163,6 +172,26 @@ const UpdateImage = ({ data }: { data: Omit<ExtendedImage, "user" | "comments"> 
             name="description"
             defaultValue={data.description ?? ""}
           />
+          <div className="space-y-2">
+            <Label>Album</Label>
+            <div className="flex gap-2">
+              <Select name="albumId" required defaultValue={data.album.id}>
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Album" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {album.length != 0 ? album.map((val) => (
+                      <SelectItem key={val.id} value={val.id}>{val.name}</SelectItem>
+                    )) : (
+                      <SelectLabel>Seems like you dont have album yet.</SelectLabel>
+                    )}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <CreateAlbum />
+            </div>
+          </div>
           <MultiSelect
             label="Tags"
             defaultValue={data.tags?.split(",")}
@@ -206,6 +235,42 @@ const DeleteImage = ({ id }: { id: string }) => {
               Delete
             </Button>
           </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const CreateAlbum = () => {
+  const [state, action] = useActionState(createAlbum, undefined)
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (state?.success) {
+      toast.success("Album created successfully")
+      setOpen(false)
+    }
+  }, [state])
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" className="flex-1">New Album</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogTitle>Create album</DialogTitle>
+        <form action={action} className="space-y-2">
+          <FormInput
+            label="Name"
+            name="name"
+            required
+          />
+          <FormInput
+            label="Description"
+            name="description"
+            required
+          />
+          <Button>Create</Button>
         </form>
       </DialogContent>
     </Dialog>

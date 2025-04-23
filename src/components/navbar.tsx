@@ -1,7 +1,7 @@
 "use client"
 
 import { authClient } from "@/lib/auth-client"
-import { Image, LogOut, UserIcon } from "lucide-react"
+import { Folder, Image, LogOut, UserIcon } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
@@ -48,13 +48,19 @@ const AvatarButton = ({ user }: { user: User }) => {
         <Link href="/upload">
           <DropdownMenuItem>
             Upload Image
-            <DropdownMenuShortcut><Image/></DropdownMenuShortcut>
+            <DropdownMenuShortcut><Image /></DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </Link>
+        <Link href="/album">
+          <DropdownMenuItem>
+            Album
+            <DropdownMenuShortcut><Folder/></DropdownMenuShortcut>
           </DropdownMenuItem>
         </Link>
         <Link href="/profile">
           <DropdownMenuItem>
             Profile
-            <DropdownMenuShortcut><UserIcon/></DropdownMenuShortcut>
+            <DropdownMenuShortcut><UserIcon /></DropdownMenuShortcut>
           </DropdownMenuItem>
         </Link>
         <DropdownMenuSeparator />
